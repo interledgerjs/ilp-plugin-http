@@ -9,6 +9,8 @@
   "author": "",
   "license": "Apache-2.0",
   "dependencies": {
+    "ilp-packet": "^3.0.8",
+    "ilp-protocol-ildcp": "^2.0.1",
     "jsonwebtoken": "^8.4.0",
     "koa": "^2.6.2",
     "node-fetch": "^2.3.0",
