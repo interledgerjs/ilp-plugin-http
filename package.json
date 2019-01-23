@@ -4,7 +4,7 @@
   "description": "ILP Plugin over HTTP",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node test/test.js"
   },
   "author": "",
   "license": "Apache-2.0",
@@ -13,5 +13,11 @@
     "koa": "^2.6.2",
     "node-fetch": "^2.3.0",
     "raw-body": "^2.3.3"
+  },
+  "devDependencies": {
+    "get-port": "^4.1.0",
+    "ilp-connector": "^22.2.0",
+    "ilp-protocol-stream": "^1.8.9",
+    "ilp-store-memory": "^1.0.0"
   }
 }

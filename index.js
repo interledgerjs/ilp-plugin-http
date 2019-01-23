@@ -1,12 +1,16 @@
-const koa = require('koa')
+const Koa = require('koa')
 const fetch = require('node-fetch')
+const EventEmitter = require('events')
 const jwt = require('jsonwebtoken')
+const raw = require('raw-body')
 // TODO: module for http2
 
 const MAX_ILP_PACKET_LENGTH = 32767
 
-class PluginHttp {
+class PluginHttp extends EventEmitter {
   constructor ({ incoming = {}, outgoing = {} } = {}) {
+    super()
+
     // TODO: validate args
     this._connected = false
 
@@ -34,7 +38,7 @@ class PluginHttp {
 
     this._app = new Koa()
     this._app.use(async (ctx, next) => {
-      const verified = await this._verifyToken(ctx.headers.authorization)
+      const verified = await this._verifyToken(ctx.get('authorization'))
       if (!verified) {
         ctx.throw(401, 'invalid authorization')
         return
@@ -45,7 +49,7 @@ class PluginHttp {
         return
       }
 
-      const packet = raw(ctx.req, {
+      const packet = await raw(ctx.req, {
         limit: MAX_ILP_PACKET_LENGTH 
       })
 
@@ -59,6 +63,7 @@ class PluginHttp {
 
     this._httpServer = this._app.listen(this._port)
     this._connected = true
+    this.emit('connect')
   }
 
   async disconnect () {
@@ -66,6 +71,7 @@ class PluginHttp {
 
     this._connected = false
     this._httpServer.close()
+    this.emit('disconnect')
   }
 
   _verifyToken (token) {
@@ -76,13 +82,14 @@ class PluginHttp {
     })
   }
 
-  _getToken () {
-    if (this._tokenSignedAt > Date.now() + this._tokenExpiry / 2) {
+  async _getToken () {
+    const now = Date.now()
+    if (this._tokenSignedAt > now + this._tokenExpiry / 2) {
       return this._token
     }
 
-    this._signedAt = Date.now()
-    return new Promise((resolve, reject) => {
+    this._tokenSignedAt = now + this._tokenExpiry
+    this._token = await new Promise((resolve, reject) => {
       jwt.sign({}, this._outgoingSecret, {
         expiresIn: Math.floor(this._tokenExpiry / 1000)
       }, (err, token) => {
@@ -90,6 +97,8 @@ class PluginHttp {
         resolve(token)
       })
     })
+
+    return this._token
   }
 
   async sendData (data) {
@@ -100,11 +109,11 @@ class PluginHttp {
     // TODO: is it possible to authenticate a whole connection at
     // establishment? maybe using client certs?
 
-    const res = await fetch(this.url, {
+    const res = await fetch(this._url, {
       method: 'POST',
       body: data,
       headers: {
-        Authorization: this._getToken(),
+        Authorization: await this._getToken(),
         'Content-Type': 'application/ilp+octet-stream'
       }
     })
@@ -143,3 +152,6 @@ class PluginHttp {
     return
   }
 }
+
+PluginHttp.version = 2
+module.exports = PluginHttp
