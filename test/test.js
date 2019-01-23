@@ -33,6 +33,11 @@ async function run () {
         plugin: '../../../..',
         assetCode: 'XRP',
         assetScale: 9,
+        maxPacketAmount: '100000',
+        throughput: {
+          incomingAmount: '1000000',
+          outgoingAmount: '1000000'
+        },
         options: {
           incoming: {
             secret: 'secret_number_two',
@@ -49,6 +54,11 @@ async function run () {
         plugin: '../../../..',
         assetCode: 'XRP',
         assetScale: 9,
+        maxPacketAmount: '100000',
+        throughput: {
+          incomingAmount: '1000000',
+          outgoingAmount: '1000000'
+        },
         options: {
           incoming: {
             secret: 'secret_number_three',
