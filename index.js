@@ -20,7 +20,7 @@ class PluginHttp {
     this._outgoingSecret = outgoing.secret
 
     this._token = null 
-    this._tokenExpiry = outgoing.tokenExpiry || 30
+    this._tokenExpiry = outgoing.tokenExpiry || 30000
     this._tokenSignedAt = 0
 
     // TODO: support http2
