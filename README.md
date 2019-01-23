@@ -1,5 +1,5 @@
 # ILP Plugin HTTP
-> Bilateral ILP Plugin that uses HTTP requests
+> ILP Plugin that uses HTTP requests
 
 - [Overview](#overview)
 - [Usage](#usage)
@@ -7,7 +7,7 @@
 
 ## Overview
 
-Plugin HTTP allows for a bilateral Interledger relationship which doesn't maintain state around websockets like Plugin BTP. It can also easily be placed behind a load balancer so that packets are distributed between a cluster of connectors.
+Plugin HTTP allows for a bilateral or multilateral Interledger relationship which doesn't maintain state around websockets like Plugin BTP. It can also easily be placed behind a load balancer so that packets are distributed between a cluster of connectors.
 
 To learn more about the architecture this plugin is designed for, read [this article by @emschwartz.](https://medium.com/interledger-blog/thoughts-on-scaling-interledger-connectors-7e3cad0dab7f)
 
