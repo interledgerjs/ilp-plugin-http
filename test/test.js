@@ -60,13 +60,14 @@ async function run () {
           outgoingAmount: '1000000'
         },
         options: {
+          multi: true,
           incoming: {
             secret: 'secret_number_three',
             port: port3
           },
           outgoing: {
             secret: 'secret_number_four',
-            url: 'http://localhost:' + port4
+            url: 'http://localhost:%'
           }
         }
       }
