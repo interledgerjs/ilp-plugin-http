@@ -17,15 +17,26 @@ For an example of usage, see the test script in `test/test.js`.
 
 ```js
 new PluginHttp({
+  multi: true, // whether to behave as a multilateral plugin
+  ildcp: { // ildcp details. fetched if multilateral and unspecified.
+    clientAddress: 'test.example',
+    assetCode: 'XRP',
+    assetScale: 9
+  },
   incoming: { // (required) describes the http server
     port: 4000, // (required) port to listen on
     secret: 'shhh' // (required) secret for auth (see Protocol section)
   },
   outgoing: { // (required) describes outgoing http calls
-    url: 'https://example.com/ilp', // (required) endpoint to POST packets to
+    url: 'https://example.com/ilp/%', // (required) endpoint to POST packets to
+    // if url contains a percent and the plugin is in `multi` mode, then the
+    // segment after this plugin's own address will be filled where the `%` is
+    // when routing packets.
+
     secret: 'othersecret', // (required) secret for auth (see Protocol section)
     http2: false, // whether `url` uses http2
-    tokenExpiry: 10 * 1000 // how often to sign a new token for auth
+    tokenExpiry: 10 * 1000, // how often to sign a new token for auth
+    name: 'alice' // name to send in `ILP-Peer-Name` header, for ilp addr.
   }
 })
 ```
