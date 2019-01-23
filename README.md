@@ -13,6 +13,8 @@ To learn more about the architecture this plugin is designed for, read [this art
 
 ## Usage
 
+For an example of usage, see the test script in `test/test.js`.
+
 ```js
 new PluginHttp({
   incoming: { // (required) describes the http server
