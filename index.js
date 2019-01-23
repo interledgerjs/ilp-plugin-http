@@ -133,7 +133,7 @@ class PluginHttp extends EventEmitter {
     const ildcp = await this._fetchIldcp()
     const { destination } = IlpPacket.deserializeIlpPrepare(data)
     const segment = destination
-      .substring(ildcp.clientAddress.length)
+      .substring(ildcp.clientAddress.length + 1)
       .split('.')[0]
 
     if (INVALID_SEGMENT.test(segment)) {
@@ -154,7 +154,7 @@ class PluginHttp extends EventEmitter {
 
     // url may be templated in multilateral environment
     const url = this._multi
-      ? this._generateUrl(data)
+      ? await this._generateUrl(data)
       : this._url
 
     const res = await fetch(url, {
