@@ -30,6 +30,7 @@ class PluginHttp extends EventEmitter {
     this._http2Clients = {}
     this._outgoingSecret = outgoing.secret
     this._name = outgoing.name || this._port
+    this._sendIlpDestination = !!outgoing.sendIlpDestination
 
     this._token = null 
     this._tokenExpiry = outgoing.tokenExpiry || 30000
@@ -86,6 +87,10 @@ class PluginHttp extends EventEmitter {
   async disconnect () {
     if (!this._connected) return
 
+    for (const client of this._http2Clients.values()) {
+      client.close()
+    }
+
     this._connected = false
     this._httpServer.close()
     this.emit('disconnect')
@@ -126,9 +131,8 @@ class PluginHttp extends EventEmitter {
   }
 
   // Only used in multilateral situation
-  async _generateUrl (data) {
+  async _generateUrl (destination) {
     const ildcp = await this._fetchIldcp()
-    const { destination } = IlpPacket.deserializeIlpPrepare(data)
     const segment = destination
       .substring(ildcp.clientAddress.length + 1)
       .split('.')[0]
@@ -160,22 +164,30 @@ class PluginHttp extends EventEmitter {
       throw new Error('plugin is not connected.')
     }
 
-    // TODO: is it possible to authenticate a whole connection at
-    // establishment? maybe using client certs?
+    const headers = {
+      Authorization: await this._getToken(),
+      'Content-Type': 'application/ilp+octet-stream',
+      'ILP-Peer-Name': this._name
+    }
 
     // url may be templated in multilateral environment
-    const url = this._multi
-      ? await this._generateUrl(data)
-      : this._url
+    let url = this._url
+    if (this._multi || this._sendIlpDestination) {
+      const { destination } = IlpPacket.deserializeIlpPrepare(data)
+
+      if (this._sendIlpDestination) {
+        headers['ILP-Destination'] = destination              
+      }
+
+      if (this._multi) {
+        url = await this._generateUrl(destination)
+      }
+    }
 
     const res = await this._fetch(url, {
       method: 'POST',
       body: data,
-      headers: {
-        Authorization: await this._getToken(),
-        'Content-Type': 'application/ilp+octet-stream',
-        'Ilp-Peer-Name': this._name
-      }
+      headers
     })
 
     if (!res.ok) {
@@ -208,7 +220,7 @@ class PluginHttp extends EventEmitter {
     return
   }
 
-  sendMoney () {
+  async sendMoney () {
     return
   }
 }
