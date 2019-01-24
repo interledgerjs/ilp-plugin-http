@@ -5,7 +5,8 @@ const fetch = require('node-fetch')
 const EventEmitter = require('events')
 const jwt = require('jsonwebtoken')
 const raw = require('raw-body')
-// TODO: module for http2
+const { URL } = require('url')
+const Http2Client = require('./src/http2')
 
 const MAX_ILP_PACKET_LENGTH = 32767
 const INVALID_SEGMENT = new RegExp('[^A-Za-z0-9_\\-]')
@@ -26,17 +27,13 @@ class PluginHttp extends EventEmitter {
     // outgoing
     this._url = outgoing.url
     this._http2 = !!outgoing.http2
+    this._http2Clients = {}
     this._outgoingSecret = outgoing.secret
     this._name = outgoing.name || this._port
 
     this._token = null 
     this._tokenExpiry = outgoing.tokenExpiry || 30000
     this._tokenSignedAt = 0
-
-    // TODO: support http2
-    if (this._http2) {
-      throw new Error('http2 is not yet supported')
-    }
   }
 
   async connect () {
@@ -144,6 +141,20 @@ class PluginHttp extends EventEmitter {
     return this._url.replace('%', segment)
   }
 
+  _fetch (url, opts) {
+    if (this._http2) {
+      const { origin, pathname } = new URL(url)
+
+      // TODO: limit the number of clients cached?
+      const client = this._http2Clients[origin] ||
+        (this._http2Clients[origin] = new Http2Client(origin))
+
+      return client.fetch(pathname, opts)
+    } else {
+      return fetch(url, opts)
+    }
+  }
+
   async sendData (data) {
     if (!this._connected) {
       throw new Error('plugin is not connected.')
@@ -157,7 +168,7 @@ class PluginHttp extends EventEmitter {
       ? await this._generateUrl(data)
       : this._url
 
-    const res = await fetch(url, {
+    const res = await this._fetch(url, {
       method: 'POST',
       body: data,
       headers: {
