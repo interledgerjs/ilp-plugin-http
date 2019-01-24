@@ -94,8 +94,7 @@ class Http2Client {
     })
   }
 
-  async fetch ({
-    path: _path,
+  async fetch (_path, {
     headers = {},
     method = 'GET',
     body
@@ -150,7 +149,9 @@ class Http2Client {
         resolve({
           headers: responseHeaders,
           status: responseHeaders[HTTP2_HEADER_STATUS],
-          data: Buffer.concat(chunks)
+          ok: String(responseHeaders[HTTP2_HEADER_STATUS]).startsWith('2'),
+          data: Buffer.concat(chunks),
+          buffer: () => Buffer.concat(chunks)
         })
       }
 
