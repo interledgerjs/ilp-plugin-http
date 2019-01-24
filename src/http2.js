@@ -115,7 +115,7 @@ class Http2Client {
       await this._writeBody(request, body)
     }
 
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const cleanUp = () => {
         request.removeListener('response', onResponse)
         request.removeListener('data', onData)
@@ -146,12 +146,13 @@ class Http2Client {
       const onEnd = () => {
         debug('request ended.')
         cleanUp()
+        const data = Buffer.concat(chunks)
         resolve({
           headers: responseHeaders,
           status: responseHeaders[HTTP2_HEADER_STATUS],
           ok: String(responseHeaders[HTTP2_HEADER_STATUS]).startsWith('2'),
-          data: Buffer.concat(chunks),
-          buffer: () => Buffer.concat(chunks)
+          buffer: () => data,
+          data
         })
       }
 
@@ -161,6 +162,12 @@ class Http2Client {
       request.once('end', onEnd)
       request.end()
     })
+  }
+
+  close () {
+    if (this._client) {
+      this._client.close()
+    }
   }
 }
 
