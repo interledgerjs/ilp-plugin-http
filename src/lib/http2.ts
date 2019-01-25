@@ -27,7 +27,7 @@ export interface Http2FetchParams {
 }
 
 export interface Http2FetchResponse {
-  headers: Map<string, string>, 
+  headers: Map<string, string>,
   status: number,
   ok: boolean,
   buffer: () => Buffer
@@ -112,13 +112,7 @@ export default class Http2Client {
         resolve()
       }
 
-      if (Buffer.isBuffer(body)) {
-        request.write(body, handleWrite)
-      } else if (typeof body === 'object') {
-        request.write(JSON.stringify(body), 'utf8', handleWrite)
-      } else {
-        request.write(String(body), 'utf8', handleWrite)
-      }
+      request.write(body, handleWrite)
     })
   }
 

@@ -104,7 +104,7 @@ class PluginHttp extends EventEmitter {
       }
 
       const packet = await raw(ctx.req, {
-        limit: MAX_ILP_PACKET_LENGTH 
+        limit: MAX_ILP_PACKET_LENGTH
       })
 
       if (this._multi) {
@@ -232,7 +232,7 @@ class PluginHttp extends EventEmitter {
       const { destination } = IlpPacket.deserializeIlpPrepare(data)
 
       if (this._sendIlpDestination) {
-        headers['ILP-Destination'] = destination              
+        headers['ILP-Destination'] = destination
       }
 
       if (this._multi) {
