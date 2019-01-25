@@ -4,10 +4,10 @@ import * as http2 from 'http2'
 
 const debug = makeDebug('http2')
 
-const ConnectStates = {
-  DISCONNECTED: 0,
-  CONNECTING: 1,
-  CONNECTED: 2
+enum ConnectState {
+  DISCONNECTED,
+  CONNECTING,
+  CONNECTED
 }
 
 const {
@@ -16,69 +16,88 @@ const {
   HTTP2_HEADER_METHOD
 } = http2.constants
 
+interface HeaderMap {
+  [key: string]: string
+}
+
+export interface FetchParams {
+  headers: HeaderMap
+  method: string
+  body?: Buffer
+}
+
 export default class Http2Client {
+  private _url: URL
+  private _authority: string
+  private _defaultPath: string
+  private _http2Opts: object
+  private _connected: ConnectState
+  private _connectPromise?: Promise<http2.ClientHttp2Session>
+  private _client?: http2.ClientHttp2Session
+
   constructor (url, opts = {}, http2Opts = {}) {
     this._url = new URL(url)
     this._authority = this._url.origin
     this._defaultPath = this._url.pathname
     this._http2Opts = http2Opts
 
-    this._connected = ConnectStates.DISCONNECTED
-    this._connectPromise = null
+    this._connected = ConnectState.DISCONNECTED
   }
 
-  _connect () {
-    if (this._connected === ConnectStates.CONNECTED) {
+  _connect (): Promise<http2.ClientHttp2Session> {
+    if (this._connected === ConnectState.CONNECTED && this._client) {
       debug('client connected')
-      return
-    } else if (this._connected === ConnectStates.CONNECTING) {
+      return this._client
+    } else if (this._connected === ConnectState.CONNECTING) {
       debug('client connecting')
       return this._connectPromise
     }
 
     debug('creating client. authority=', this._authority)
-    this._client = http2.connect(this._authority, this._http2Opts)
-    this._connected = ConnectStates.CONNECTING
+    const client = http2.connect(this._authority, this._http2Opts)
+
+    this._client = client
+    this._connected = ConnectState.CONNECTING
     this._connectPromise = new Promise((resolve, reject) => {
       const cleanUp = () => {
-        this._client.removeListener('connect', onConnect)
-        this._client.removeListener('error', onError)
-        this._client.removeListener('close', onClose)
+        client.removeListener('connect', onConnect)
+        client.removeListener('error', onError)
+        client.removeListener('close', onClose)
       }
 
       const onConnect = () => {
         debug('client connected.')
-        this._client.removeListener('connect', onConnect)
-        this._connected = ConnectStates.CONNECTED
-        resolve(this._client)
+        client.removeListener('connect', onConnect)
+        this._connected = ConnectState.CONNECTED
+        resolve(client)
       }
 
       const onClose = () => {
         debug('client closed.')
         cleanUp()
-        this._connected = ConnectStates.DISCONNECTED
+        this._connected = ConnectState.DISCONNECTED
         reject(new Error('closed while opening connection'))
       }
 
       // TODO: log the error
-      const onError = error => {
+      const onError = (error: Error) => {
         debug('client encountered error. error=', error.message)
         cleanUp()
-        this._connected = ConnectStates.DISCONNECTED
+        this._connected = ConnectState.DISCONNECTED
         reject(error)
       }
 
-      this._client.on('connect', onConnect)
-      this._client.on('close', onClose)
-      this._client.on('error', onError)
+      client.on('connect', onConnect)
+      client.on('close', onClose)
+      client.on('error', onError)
     })
 
     return this._connectPromise
   }
 
-  _writeBody (request, body) {
+  _writeBody (request: http2.ClientHttp2Stream, body: Buffer) {
     return new Promise((resolve, reject) => {
-      const handleWrite = (err) => {
+      const handleWrite = (err?: Error) => {
         if (err) {
           reject(err)
           return
@@ -96,11 +115,14 @@ export default class Http2Client {
     })
   }
 
-  async fetch (_path, {
+  async fetch (_path: string, {
     headers = {},
     method = 'GET',
     body
-  } = {}) {
+  }: FetchParams = {
+    headers: {},
+    method: 'GET'
+  }) {
     const path = _path || this._defaultPath
     const client = await this._connect()
 
@@ -126,20 +148,20 @@ export default class Http2Client {
       }
 
       const responseHeaders = {}
-      const onResponse = (headers, flags) => {
+      const onResponse = (headers: HeaderMap, flags: number) => {
         debug('got response headers. status=', headers[HTTP2_HEADER_STATUS])
         for (const name in headers) {
           responseHeaders[name] = headers[name]
         }
       }
 
-      const chunks = []
-      const onData = chunk => {
+      const chunks: Array<Buffer> = []
+      const onData = (chunk: Buffer) => {
         debug('got chunk of data. length=', chunk.length)
         chunks.push(chunk)
       }
 
-      const onError = error => {
+      const onError = (error: Error) => {
         debug('got request error. error=', error.message)
         cleanUp()
         reject(error)
