@@ -1,6 +1,8 @@
-const { URL } = require('url')
-const debug = require('debug')('http2')
-const http2 = require('http2')
+import { URL } from 'url'
+import * as makeDebug from 'debug'
+import * as http2 from 'http2'
+
+const debug = makeDebug('http2')
 
 const ConnectStates = {
   DISCONNECTED: 0,
@@ -14,7 +16,7 @@ const {
   HTTP2_HEADER_METHOD
 } = http2.constants
 
-class Http2Client {
+export default class Http2Client {
   constructor (url, opts = {}, http2Opts = {}) {
     this._url = new URL(url)
     this._authority = this._url.origin
@@ -170,5 +172,3 @@ class Http2Client {
     }
   }
 }
-
-module.exports = Http2Client

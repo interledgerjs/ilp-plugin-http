@@ -1,4 +1,4 @@
-const Http2Client = require('../src/http2')
+const Http2Client = require('../src/lib/http2')
 
 async function run () {
   console.log('making client')
