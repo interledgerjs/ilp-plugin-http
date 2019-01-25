@@ -1,12 +1,18 @@
 import * as Koa from 'koa'
 import * as IlpPacket from 'ilp-packet'
 import * as ILDCP from 'ilp-protocol-ildcp'
-import * as fetch from 'node-fetch'
 import * as EventEmitter from 'events'
 import * as raw from 'raw-body'
 import * as jwt from 'jsonwebtoken'
+import * as http from 'http'
+import fetch, { Response } from 'node-fetch'
 import { URL } from 'url'
-import Http2Client from './lib/http2'
+import Http2Client, {
+  Http2FetchParams,
+  Http2FetchResponse
+} from './lib/http2'
+
+type FetchResponse = Http2FetchResponse | Response
 
 const MAX_ILP_PACKET_LENGTH = 32767
 const INVALID_SEGMENT = new RegExp('[^A-Za-z0-9_\\-]')
@@ -34,6 +40,8 @@ interface Http2ClientMap {
   [key: string]: Http2Client
 }
 
+type PacketHandler = (data: Buffer) => Promise<Buffer>
+
 class PluginHttp extends EventEmitter {
   private _connected: boolean
   private _multi: boolean
@@ -49,6 +57,10 @@ class PluginHttp extends EventEmitter {
   private _token: string
   private _tokenExpiry: number
   private _tokenSignedAt: number
+  private _dataHandler?: PacketHandler
+  private _httpServer: http.Server
+  private _app: Koa
+  public static version: number
 
   constructor ({ multi, ildcp, incoming, outgoing }: PluginHttpOpts) {
     super()
@@ -125,7 +137,7 @@ class PluginHttp extends EventEmitter {
   async disconnect (): Promise<void> {
     if (!this._connected) return
 
-    for (const client of this._http2Clients.values()) {
+    for (const client of Object.values(this._http2Clients)) {
       client.close()
     }
 
@@ -134,9 +146,9 @@ class PluginHttp extends EventEmitter {
     this.emit('disconnect')
   }
 
-  _verifyToken (token): Promise<boolean> {
+  _verifyToken (token: string): Promise<boolean> {
     return new Promise(resolve => {
-      jwt.verify(token, this._incomingSecret, err => {
+      jwt.verify(token, this._incomingSecret, (err: Error) => {
         resolve(!err)
       })
     })
@@ -163,9 +175,14 @@ class PluginHttp extends EventEmitter {
 
   async _fetchIldcp (): Promise<ILDCP.IldcpResponse> {
     if (!this._ildcp) {
-      this._ildcp = await ILDCP.fetch(this._dataHandler)
+      if (this._dataHandler) {
+        return (this._ildcp = await ILDCP.fetch(this._dataHandler))
+      } else {
+        throw new Error('data handler must be registered to fetch ildcp')
+      }
+    } else {
+      return this._ildcp
     }
-    return this._ildcp
   }
 
   // Only used in multilateral situation
@@ -184,8 +201,7 @@ class PluginHttp extends EventEmitter {
   }
 
   // TODO: type/interface for the fetch response?
-  // TODO: type/interface for the fetch options
-  _fetch (url: string, opts: object): Promise<object> {
+  _fetch (url: string, opts: Http2FetchParams): Promise<FetchResponse> {
     if (this._http2) {
       const { origin, pathname } = new URL(url)
 
@@ -195,7 +211,7 @@ class PluginHttp extends EventEmitter {
 
       return client.fetch(pathname, opts)
     } else {
-      return fetch(url, opts)
+      return fetch(url, opts) as Promise<FetchResponse>
     }
   }
 
@@ -243,7 +259,7 @@ class PluginHttp extends EventEmitter {
     return this._connected
   }
 
-  registerDataHandler (handler: (data: Buffer) => Promise<Buffer>) {
+  registerDataHandler (handler: PacketHandler) {
     this._dataHandler = handler
   }
 
