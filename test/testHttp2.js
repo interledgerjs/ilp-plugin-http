@@ -1,11 +1,11 @@
-const Http2Client = require('../src/lib/http2')
+const Http2Client = require('../build/lib/http2').default
 
 async function run () {
   console.log('making client')
   const client = new Http2Client('https://coil.com')
 
   console.log('fetching site')
-  const result = await client.fetch()
+  const result = await client.fetch('/', {})
 
   console.log(result)
   console.log(result.buffer().toString())
