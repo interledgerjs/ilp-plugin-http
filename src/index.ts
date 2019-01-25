@@ -282,4 +282,4 @@ class PluginHttp extends EventEmitter {
 }
 
 PluginHttp.version = 2
-module.exports = PluginHttp
+export default PluginHttp
