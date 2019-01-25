@@ -20,10 +20,17 @@ interface HeaderMap {
   [key: string]: string
 }
 
-export interface FetchParams {
+export interface Http2FetchParams {
   headers: HeaderMap
   method: string
   body?: Buffer
+}
+
+export interface Http2FetchResponse {
+  headers: Map<string, string>, 
+  status: number,
+  ok: boolean,
+  buffer: () => Buffer
 }
 
 export default class Http2Client {
@@ -35,11 +42,11 @@ export default class Http2Client {
   private _connectPromise?: Promise<http2.ClientHttp2Session>
   private _client?: http2.ClientHttp2Session
 
-  constructor (url, opts = {}, http2Opts = {}) {
+  constructor (url: string, opts?: object, http2Opts?: object) {
     this._url = new URL(url)
     this._authority = this._url.origin
     this._defaultPath = this._url.pathname
-    this._http2Opts = http2Opts
+    this._http2Opts = http2Opts || {}
 
     this._connected = ConnectState.DISCONNECTED
   }
@@ -47,8 +54,8 @@ export default class Http2Client {
   _connect (): Promise<http2.ClientHttp2Session> {
     if (this._connected === ConnectState.CONNECTED && this._client) {
       debug('client connected')
-      return this._client
-    } else if (this._connected === ConnectState.CONNECTING) {
+      return Promise.resolve(this._client)
+    } else if (this._connected === ConnectState.CONNECTING && this._connectPromise) {
       debug('client connecting')
       return this._connectPromise
     }
@@ -119,10 +126,7 @@ export default class Http2Client {
     headers = {},
     method = 'GET',
     body
-  }: FetchParams = {
-    headers: {},
-    method: 'GET'
-  }) {
+  }: Http2FetchParams): Promise<Http2FetchResponse> {
     const path = _path || this._defaultPath
     const client = await this._connect()
 
@@ -147,11 +151,11 @@ export default class Http2Client {
         request.removeListener('end', onEnd)
       }
 
-      const responseHeaders = {}
+      const responseHeaders: Map<string, string> = new Map()
       const onResponse = (headers: HeaderMap, flags: number) => {
         debug('got response headers. status=', headers[HTTP2_HEADER_STATUS])
         for (const name in headers) {
-          responseHeaders[name] = headers[name]
+          responseHeaders.set(name, headers[name])
         }
       }
 
@@ -173,10 +177,9 @@ export default class Http2Client {
         const data = Buffer.concat(chunks)
         resolve({
           headers: responseHeaders,
-          status: responseHeaders[HTTP2_HEADER_STATUS],
+          status: Number(responseHeaders[HTTP2_HEADER_STATUS]),
           ok: String(responseHeaders[HTTP2_HEADER_STATUS]).startsWith('2'),
-          buffer: () => data,
-          data
+          buffer: () => data
         })
       }
 

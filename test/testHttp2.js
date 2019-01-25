@@ -8,7 +8,7 @@ async function run () {
   const result = await client.fetch()
 
   console.log(result)
-  console.log(result.data.toString())
+  console.log(result.buffer().toString())
 }
 
 run()
