@@ -92,6 +92,11 @@ class PluginHttp extends EventEmitter {
 
     this._app = new Koa()
     this._app.use(async (ctx, next) => {
+      if (ctx.method === 'GET') {
+        ctx.body = 'OK'
+        return
+      }
+
       const verified = await this._verifyToken(ctx.get('authorization'))
       if (!verified) {
         ctx.throw(401, 'invalid authorization')
