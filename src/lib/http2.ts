@@ -171,8 +171,8 @@ export default class Http2Client {
         const data = Buffer.concat(chunks)
         resolve({
           headers: responseHeaders,
-          status: Number(responseHeaders[HTTP2_HEADER_STATUS]),
-          ok: String(responseHeaders[HTTP2_HEADER_STATUS]).startsWith('2'),
+          status: Number(responseHeaders.get(HTTP2_HEADER_STATUS)),
+          ok: String(responseHeaders.get(HTTP2_HEADER_STATUS)).startsWith('2'),
           buffer: () => data
         })
       }
