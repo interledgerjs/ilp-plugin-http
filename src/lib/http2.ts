@@ -93,7 +93,7 @@ export default class Http2Client {
   }: Http2FetchParams): Promise<Http2FetchResponse> {
     const path = _path || this._defaultPath
 
-    debug('creating request. path=', path, 'method=', method)
+    // debug('creating request. path=', path, 'method=', method)
     const request = client.request({
       [HTTP2_HEADER_PATH]: path,
       [HTTP2_HEADER_METHOD]: method,
@@ -102,16 +102,18 @@ export default class Http2Client {
 
     // write the body to the stream
     if (body) {
-      debug('writing body to request.')
+      // debug('writing body to request.')
       await this._writeBody(request, body)
     }
 
     return new Promise((resolve, reject) => {
       const cleanUp = () => {
-        request.removeListener('response', onResponse)
-        request.removeListener('data', onData)
-        request.removeListener('error', onError)
-        request.removeListener('end', onEnd)
+        setImmediate(() => {
+          request.removeListener('response', onResponse)
+          request.removeListener('data', onData)
+          request.removeListener('error', onError)
+          request.removeListener('end', onEnd)
+        })
       }
 
       const responseHeaders: Map<string, string> = new Map()
