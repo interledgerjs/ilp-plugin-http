@@ -31,7 +31,7 @@ export interface Http2FetchResponse {
 export default class Http2Client {
   private _url: URL
   private _authority: string
-  private _http2Opts: string
+  private _http2Opts: object
   private _defaultPath: string
   private _sessions: Array<Http2Session>
 
@@ -44,7 +44,7 @@ export default class Http2Client {
     this._sessions = []
   }
 
-  async _allocateRequestAndRun<T>(cb: (client: http2.Http2Client) => Promise<T>): Promise<T> {
+  async _allocateRequestAndRun<T>(cb: (client: http2.ClientHttp2Session) => Promise<T>): Promise<T> {
     for (const session of this._sessions) {
       const client = await session.allocateRequest()
 
