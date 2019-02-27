@@ -1,14 +1,9 @@
 import { URL } from 'url'
 import * as makeDebug from 'debug'
 import * as http2 from 'http2'
+import Http2Session from './http2Session'
 
 const debug = makeDebug('http2')
-
-enum ConnectState {
-  DISCONNECTED,
-  CONNECTING,
-  CONNECTED
-}
 
 const {
   HTTP2_HEADER_PATH,
@@ -36,11 +31,9 @@ export interface Http2FetchResponse {
 export default class Http2Client {
   private _url: URL
   private _authority: string
+  private _http2Opts: string
   private _defaultPath: string
-  private _http2Opts: object
-  private _connected: ConnectState
-  private _connectPromise?: Promise<http2.ClientHttp2Session>
-  private _client?: http2.ClientHttp2Session
+  private _sessions: Array<Http2Session>
 
   constructor (url: string, opts?: object, http2Opts?: object) {
     this._url = new URL(url)
@@ -48,58 +41,29 @@ export default class Http2Client {
     this._defaultPath = this._url.pathname
     this._http2Opts = http2Opts || {}
 
-    this._connected = ConnectState.DISCONNECTED
+    this._sessions = []
   }
 
-  _connect (): Promise<http2.ClientHttp2Session> {
-    if (this._connected === ConnectState.CONNECTED && this._client) {
-      debug('client connected')
-      return Promise.resolve(this._client)
-    } else if (this._connected === ConnectState.CONNECTING && this._connectPromise) {
-      debug('client connecting')
-      return this._connectPromise
+  async _allocateRequestAndRun<T>(cb: (client: http2.Http2Client) => Promise<T>): Promise<T> {
+    for (const session of this._sessions) {
+      const client = await session.allocateRequest()
+
+      if (client) {
+        try {
+          const result = await cb(client)
+          return result
+        } catch (e) {
+          throw e
+        } finally {
+          session.freeRequest()
+        }
+      }
     }
 
-    debug('creating client. authority=', this._authority)
-    const client = http2.connect(this._authority, this._http2Opts)
+    this._sessions.push(new Http2Session(this._authority, this._http2Opts))
+    debug('allocating new http2 session. count=', this._sessions.length)
 
-    this._client = client
-    this._connected = ConnectState.CONNECTING
-    this._connectPromise = new Promise((resolve, reject) => {
-      const cleanUp = () => {
-        client.removeListener('connect', onConnect)
-        client.removeListener('error', onError)
-        client.removeListener('close', onClose)
-      }
-
-      const onConnect = () => {
-        debug('client connected.')
-        client.removeListener('connect', onConnect)
-        this._connected = ConnectState.CONNECTED
-        resolve(client)
-      }
-
-      const onClose = () => {
-        debug('client closed.')
-        cleanUp()
-        this._connected = ConnectState.DISCONNECTED
-        reject(new Error('closed while opening connection'))
-      }
-
-      // TODO: log the error
-      const onError = (error: Error) => {
-        debug('client encountered error. error=', error.message)
-        cleanUp()
-        this._connected = ConnectState.DISCONNECTED
-        reject(error)
-      }
-
-      client.on('connect', onConnect)
-      client.on('close', onClose)
-      client.on('error', onError)
-    })
-
-    return this._connectPromise
+    return this._allocateRequestAndRun(cb)
   }
 
   _writeBody (request: http2.ClientHttp2Stream, body: Buffer) {
@@ -116,13 +80,18 @@ export default class Http2Client {
     })
   }
 
-  async fetch (_path: string, {
+  fetch (path: string, params: Http2FetchParams): Promise<Http2FetchResponse> {
+    return this._allocateRequestAndRun(client => {
+      return this._fetch(client, path, params)
+    })
+  }
+
+  async _fetch (client: http2.ClientHttp2Session, _path: string, {
     headers = {},
     method = 'GET',
     body
   }: Http2FetchParams): Promise<Http2FetchResponse> {
     const path = _path || this._defaultPath
-    const client = await this._connect()
 
     debug('creating request. path=', path, 'method=', method)
     const request = client.request({
@@ -186,8 +155,8 @@ export default class Http2Client {
   }
 
   close () {
-    if (this._client) {
-      this._client.close()
+    for (const session of this._sessions) {
+      session.close()
     }
   }
 }
