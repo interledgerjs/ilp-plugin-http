@@ -2,6 +2,7 @@ import * as makeDebug from 'debug'
 import * as http2 from 'http2'
 
 const debug = makeDebug('http2session')
+const DEFAULT_MAX_STREAMS = (2 ** 31) - 1
 
 enum ConnectState {
   DISCONNECTED,
@@ -18,7 +19,7 @@ export default class Http2Session {
   private _connectPromise: Promise<http2.ClientHttp2Session>
   private _client: http2.ClientHttp2Session
 
-  constructor (authority, http2Opts) {
+  constructor (authority: string, http2Opts: object) {
     this._authority = authority
     this._http2Opts = http2Opts
     this._connected = ConnectState.DISCONNECTED
@@ -26,8 +27,11 @@ export default class Http2Session {
   }
 
   async allocateRequest (): Promise<http2.ClientHttp2Session | undefined> {
-    const client = await this.connect()
-    if (this._requests >= client.remoteSettings.maxConcurrentStreams) {
+    const client = await this._connect()
+    const maxStreams = client.remoteSettings.maxConcurrentStreams ||
+      DEFAULT_MAX_STREAMS
+
+    if (this._requests >= maxStreams) {
       return
     } else {
       this._requests++
@@ -39,7 +43,7 @@ export default class Http2Session {
     this._requests--
   }
 
-  _connect () {
+  _connect (): Promise<http2.ClientHttp2Session> {
     if (this._connected === ConnectState.CONNECTED && this._client) {
       return Promise.resolve(this._client)
     } else if (this._connected === ConnectState.CONNECTING && this._connectPromise) {
@@ -84,6 +88,8 @@ export default class Http2Session {
       client.on('close', onClose)
       client.on('error', onError)
     })
+
+    return this._connectPromise
   }
 
   close () {
