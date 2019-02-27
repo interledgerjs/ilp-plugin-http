@@ -57,9 +57,11 @@ export default class Http2Session {
     this._connected = ConnectState.CONNECTING
     this._connectPromise = new Promise((resolve, reject) => {
       const cleanUp = () => {
-        client.removeListener('connect', onConnect)
-        client.removeListener('error', onError)
-        client.removeListener('close', onClose)
+        setImmediate(() => {
+          client.removeListener('connect', onConnect)
+          client.removeListener('error', onError)
+          client.removeListener('close', onClose)
+        })
       }
 
       const onConnect = () => {
