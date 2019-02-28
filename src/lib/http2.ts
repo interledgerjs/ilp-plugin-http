@@ -46,7 +46,7 @@ export default class Http2Client {
     this._sessions = []
   }
 
-  async _allocateRequestAndRun<T>(cb: (client: http2.ClientHttp2Session) => Promise<T>): Promise<T> {
+  async _allocateRequestAndRun<T> (cb: (client: http2.ClientHttp2Session) => Promise<T>): Promise<T> {
     for (const session of this._sessions) {
       const client = await session.allocateRequest()
 
