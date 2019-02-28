@@ -6,25 +6,37 @@ async function run () {
     maxRequestsPerSession: 900
   })
 
-  console.log('fetching site 5k times')
-  let result
+  const iterations = 75000
+  const promises = []
+  console.log(`fetching site ${iterations} times`)
 
   let successes = 0
   let failures = 0
 
-  for (let i = 0; i < 15; ++i) {
-    console.log('iteration', i)
-    result = await Promise.all([ ...Array(5000).keys() ].map(async () => {
+  const startDate = Date.now()
+
+  for (let i = 0; i < iterations; ++i) {
+    if (i % 1000 === 0) {
+      console.log('iteration', i)
+    }
+    promises.push(new Promise(async (resolve) => {
       try {
         const result = await client.fetch('/', {})
         successes++
-        return result
+        resolve(result)
       } catch (e) {
         failures++
+        resolve()
       }
     }))
+    await new Promise(resolve => setTimeout(resolve, 1))
   }
 
+  const result = await Promise.all(promises)
+  const endDate = Date.now()
+  const rate = (iterations / ((endDate - startDate) / 1000)).toFixed(3)
+
+  console.log('rate: ', rate, 'pps')
   console.log('fetched.')
   console.log('success:', successes)
   console.log('failure:', failures)
