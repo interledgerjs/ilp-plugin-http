@@ -54,8 +54,6 @@ export default class Http2Client {
         try {
           const result = await cb(client)
           return result
-        } catch (e) {
-          throw e
         } finally {
           session.freeRequest()
         }
