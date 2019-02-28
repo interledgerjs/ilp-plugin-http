@@ -99,7 +99,7 @@ export default class Http2Client {
   }: Http2FetchParams): Promise<Http2FetchResponse> {
     const path = _path || this._defaultPath
 
-    // debug('creating request. path=', path, 'method=', method)
+    debug('creating request. path=', path, 'method=', method)
     const request = client.request({
       [HTTP2_HEADER_PATH]: path,
       [HTTP2_HEADER_METHOD]: method,
@@ -108,7 +108,7 @@ export default class Http2Client {
 
     // write the body to the stream
     if (body) {
-      // debug('writing body to request.')
+      debug('writing body to request.')
       await this._writeBody(request, body)
     }
 
@@ -124,7 +124,7 @@ export default class Http2Client {
 
       const responseHeaders: Map<string, string> = new Map()
       const onResponse = (headers: HeaderMap, flags: number) => {
-        // debug('got response headers. status=', headers[HTTP2_HEADER_STATUS])
+        debug('got response headers. status=', headers[HTTP2_HEADER_STATUS])
         for (const name in headers) {
           responseHeaders.set(name, headers[name])
         }
@@ -132,15 +132,11 @@ export default class Http2Client {
 
       const chunks: Array<Buffer> = []
       const onData = (chunk: Buffer) => {
-        // debug('got chunk of data. length=', chunk.length)
+        debug('got chunk of data. length=', chunk.length)
         chunks.push(chunk)
       }
 
       const onError = (error: Error) => {
-        if (client.remoteSettings.maxConcurrentStreams !== 256) {
-          console.log('error, logging remote settings', client.remoteSettings)
-        }
-
         debug('got request error. error=', error.message)
         cleanUp()
         reject(error)
