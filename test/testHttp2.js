@@ -2,7 +2,9 @@ const Http2Client = require('../build/lib/http2').default
 
 async function run () {
   console.log('making client')
-  const client = new Http2Client('https://staging.coil.com')
+  const client = new Http2Client('https://staging.coil.com', {
+    maxRequestsPerSession: 900
+  })
 
   console.log('fetching site 5k times')
   let result
@@ -10,7 +12,7 @@ async function run () {
   let successes = 0
   let failures = 0
 
-  for (let i = 0; i < 10; ++i) {
+  for (let i = 0; i < 15; ++i) {
     console.log('iteration', i)
     result = await Promise.all([ ...Array(5000).keys() ].map(async () => {
       try {
