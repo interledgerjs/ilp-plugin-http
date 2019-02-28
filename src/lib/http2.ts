@@ -34,12 +34,14 @@ export default class Http2Client {
   private _http2Opts: object
   private _defaultPath: string
   private _sessions: Array<Http2Session>
+  private _maxRequestsPerSession?: number
 
   constructor (url: string, opts?: object, http2Opts?: object) {
     this._url = new URL(url)
     this._authority = this._url.origin
     this._defaultPath = this._url.pathname
     this._http2Opts = http2Opts || {}
+    this._maxRequestsPerSession = opts && Number(opts['maxRequestsPerSession'])
 
     this._sessions = []
   }
@@ -60,8 +62,12 @@ export default class Http2Client {
       }
     }
 
-    this._sessions.push(new Http2Session(this._authority, this._http2Opts))
-    debug('allocating new http2 session. count=', this._sessions.length)
+    debug('allocating new http2 session. count=', this._sessions.length + 1)
+    this._sessions.push(new Http2Session(
+      this._authority,
+      this._http2Opts,
+      this._maxRequestsPerSession
+    ))
 
     return this._allocateRequestAndRun(cb)
   }
@@ -118,7 +124,7 @@ export default class Http2Client {
 
       const responseHeaders: Map<string, string> = new Map()
       const onResponse = (headers: HeaderMap, flags: number) => {
-        debug('got response headers. status=', headers[HTTP2_HEADER_STATUS])
+        // debug('got response headers. status=', headers[HTTP2_HEADER_STATUS])
         for (const name in headers) {
           responseHeaders.set(name, headers[name])
         }
@@ -126,25 +132,33 @@ export default class Http2Client {
 
       const chunks: Array<Buffer> = []
       const onData = (chunk: Buffer) => {
-        debug('got chunk of data. length=', chunk.length)
+        // debug('got chunk of data. length=', chunk.length)
         chunks.push(chunk)
       }
 
       const onError = (error: Error) => {
+        if (client.remoteSettings.maxConcurrentStreams !== 256) {
+          console.log('error, logging remote settings', client.remoteSettings)
+        }
+
         debug('got request error. error=', error.message)
         cleanUp()
         reject(error)
       }
 
-      const onEnd = () => {
-        debug('request ended.')
+      const onEnd = (...args: any) => {
         cleanUp()
         const data = Buffer.concat(chunks)
-        resolve({
-          headers: responseHeaders,
-          status: Number(responseHeaders.get(HTTP2_HEADER_STATUS)),
-          ok: String(responseHeaders.get(HTTP2_HEADER_STATUS)).startsWith('2'),
-          buffer: () => data
+
+        // TODO: this is hacky, but it means that the error will go first if
+        // error and end are emitted in the same tick.
+        setImmediate(() => {
+          resolve({
+            headers: responseHeaders,
+            status: Number(responseHeaders.get(HTTP2_HEADER_STATUS)),
+            ok: String(responseHeaders.get(HTTP2_HEADER_STATUS)).startsWith('2'),
+            buffer: () => data
+          })
         })
       }
 

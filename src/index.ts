@@ -30,6 +30,7 @@ export interface PluginHttpOpts {
     url: string,
     secret: string,
     http2?: boolean,
+    http2MaxRequestsPerSession?: number,
     name?: string,
     sendIlpDestination?: boolean
     tokenExpiry?: number
@@ -51,6 +52,7 @@ class PluginHttp extends EventEmitter {
   private _url: string
   private _http2: boolean
   private _http2Clients: Http2ClientMap
+  private _http2MaxRequestsPerSession?: number
   private _outgoingSecret: string
   private _name: string
   private _sendIlpDestination: boolean
@@ -78,6 +80,7 @@ class PluginHttp extends EventEmitter {
     this._url = outgoing.url
     this._http2 = !!outgoing.http2
     this._http2Clients = {}
+    this._http2MaxRequestsPerSession = outgoing.http2MaxRequestsPerSession
     this._outgoingSecret = outgoing.secret
     this._name = outgoing.name || String(this._port)
     this._sendIlpDestination = !!outgoing.sendIlpDestination
@@ -205,16 +208,23 @@ class PluginHttp extends EventEmitter {
     return this._url.replace('%', segment)
   }
 
+  _getHttp2ClientForOrigin (origin: string): Http2Client {
+    if (!this._http2Clients[origin]) {
+      this._http2Clients[origin] = new Http2Client(origin, {
+        maxRequestsPerSession: this._http2MaxRequestsPerSession
+      })
+    }
+
+    return this._http2Clients[origin]
+  }
+
   // TODO: type/interface for the fetch response?
   _fetch (url: string, opts: Http2FetchParams): Promise<FetchResponse> {
     if (this._http2) {
       const { origin, pathname } = new URL(url)
 
       // TODO: limit the number of clients cached?
-      const client = this._http2Clients[origin] ||
-        (this._http2Clients[origin] = new Http2Client(origin))
-
-      return client.fetch(pathname, opts)
+      return this._getHttp2ClientForOrigin(origin).fetch(pathname, opts)
     } else {
       return fetch(url, opts) as Promise<FetchResponse>
     }
