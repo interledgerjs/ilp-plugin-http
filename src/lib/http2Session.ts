@@ -14,7 +14,7 @@ enum ConnectState {
 export default class Http2Session {
   private _authority: string
   private _http2Opts: object
-  private _requests: number
+  private _inFlightRequests: number
   private _totalRequests: number
   private _maxRequests: number
 
@@ -22,14 +22,11 @@ export default class Http2Session {
   private _connectPromise: Promise<http2.ClientHttp2Session>
   private _client: http2.ClientHttp2Session
 
-  public id: string
-
   constructor (authority: string, http2Opts: object, maxRequests?: number) {
-    this.id = String(Math.random()).substring(2)
     this._authority = authority
     this._http2Opts = http2Opts
     this._connected = ConnectState.DISCONNECTED
-    this._requests = 0
+    this._inFlightRequests = 0
     this._totalRequests = 0
     this._maxRequests = maxRequests || MAX_TOTAL_REQUESTS
   }
@@ -39,21 +36,21 @@ export default class Http2Session {
     const maxStreams = client.remoteSettings.maxConcurrentStreams ||
       DEFAULT_MAX_STREAMS
 
-    if (this._requests >= maxStreams || this._totalRequests >= this._maxRequests) {
+    if (this._inFlightRequests >= maxStreams || this._totalRequests >= this._maxRequests) {
       return
     } else {
-      this._requests++
+      this._inFlightRequests++
       this._totalRequests++
       return client
     }
   }
 
   freeRequest (): void {
-    this._requests--
+    this._inFlightRequests--
   }
 
   _connect (): Promise<http2.ClientHttp2Session> {
-    if (this._requests === 0 && this._totalRequests >= this._maxRequests) {
+    if (this._inFlightRequests === 0 && this._totalRequests >= this._maxRequests) {
       debug('hit maximum requests; resetting connection')
     } else if (this._connected === ConnectState.CONNECTED && this._client) {
       return Promise.resolve(this._client)
