@@ -66,7 +66,7 @@ async function run () {
             port: port3
           },
           outgoing: {
-            secret: 'secret_number_four',
+            secretToken: 'secret_number_four',
             url: 'http://localhost:%'
           }
         }
@@ -76,7 +76,7 @@ async function run () {
 
   const clientPlugin = new PluginHttp({
     incoming: {
-      secret: 'secret_number_four',
+      secretToken: 'secret_number_four',
       port: port4
     },
     outgoing: {
