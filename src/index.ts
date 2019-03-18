@@ -11,6 +11,7 @@ import Http2Client, {
   Http2FetchParams,
   Http2FetchResponse
 } from './lib/http2'
+import Auth from './lib/auth'
 
 type FetchResponse = Http2FetchResponse | Response
 
@@ -23,12 +24,14 @@ export interface PluginHttpOpts {
 
   incoming: {
     port: number,
-    secret: string
+    secret?: string, // JWT
+    secretToken?: string
   },
 
   outgoing: {
     url: string,
-    secret: string,
+    secret?: string, // JWT
+    secretToken?: string,
     http2?: boolean,
     http2MaxRequestsPerSession?: number,
     name?: string,
@@ -48,17 +51,14 @@ class PluginHttp extends EventEmitter {
   private _multi: boolean
   private _ildcp?: ILDCP.IldcpResponse
   private _port: number
-  private _incomingSecret: string
   private _url: string
   private _http2: boolean
   private _http2Clients: Http2ClientMap
   private _http2MaxRequestsPerSession?: number
-  private _outgoingSecret: string
   private _name: string
   private _sendIlpDestination: boolean
-  private _token: string
-  private _tokenExpiry: number
-  private _tokenSignedAt: number
+  private _incomingAuth: Auth
+  private _outgoingAuth: Auth
   private _dataHandler?: PacketHandler
   private _httpServer: http.Server
   private _app: Koa
@@ -74,20 +74,24 @@ class PluginHttp extends EventEmitter {
 
     // incoming
     this._port = incoming.port
-    this._incomingSecret = incoming.secret
 
     // outgoing
     this._url = outgoing.url
     this._http2 = !!outgoing.http2
     this._http2Clients = {}
     this._http2MaxRequestsPerSession = outgoing.http2MaxRequestsPerSession
-    this._outgoingSecret = outgoing.secret
     this._name = outgoing.name || String(this._port)
     this._sendIlpDestination = !!outgoing.sendIlpDestination
 
-    this._token = ''
-    this._tokenExpiry = outgoing.tokenExpiry || 30000
-    this._tokenSignedAt = 0
+    this._incomingAuth = new Auth({
+      jwtSecret: incoming.secret,
+      staticToken: incoming.secretToken
+    })
+    this._outgoingAuth = new Auth({
+      jwtSecret: outgoing.secret,
+      jwtExpiry: outgoing.tokenExpiry,
+      staticToken: outgoing.secretToken
+    })
   }
 
   async connect (): Promise<void> {
@@ -155,30 +159,11 @@ class PluginHttp extends EventEmitter {
   }
 
   _verifyToken (token: string): Promise<boolean> {
-    return new Promise(resolve => {
-      jwt.verify(token, this._incomingSecret, (err: Error) => {
-        resolve(!err)
-      })
-    })
+    return this._incomingAuth.verifyToken(token)
   }
 
-  async _getToken (): Promise<string> {
-    const now = Date.now()
-    if (this._tokenSignedAt > now + this._tokenExpiry / 2) {
-      return this._token
-    }
-
-    this._tokenSignedAt = now + this._tokenExpiry
-    this._token = await new Promise((resolve, reject) => {
-      jwt.sign({}, this._outgoingSecret, {
-        expiresIn: Math.floor(this._tokenExpiry / 1000)
-      }, (err, token) => {
-        if (err) reject(err)
-        resolve(token)
-      })
-    })
-
-    return this._token
+  _getToken (): Promise<string> {
+    return this._outgoingAuth.getToken()
   }
 
   async _fetchIldcp (): Promise<ILDCP.IldcpResponse> {
