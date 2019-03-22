@@ -1,6 +1,6 @@
 {
   "name": "ilp-plugin-http",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "ILP Plugin over HTTP",
   "main": "index.js",
   "types": "build/index.d.ts",
