@@ -20,6 +20,7 @@ const INVALID_SEGMENT = new RegExp('[^A-Za-z0-9_\\-]')
 
 export interface PluginHttpOpts {
   multi?: boolean
+  multiDelimiter?: string
   ildcp?: ILDCP.IldcpResponse
 
   incoming: {
@@ -49,6 +50,7 @@ type PacketHandler = (data: Buffer) => Promise<Buffer>
 class PluginHttp extends EventEmitter {
   private _connected: boolean
   private _multi: boolean
+  private _multiDelimiter: string
   private _ildcp?: ILDCP.IldcpResponse
   private _port: number
   private _url: string
@@ -64,12 +66,13 @@ class PluginHttp extends EventEmitter {
   private _app: Koa
   public static version: number
 
-  constructor ({ multi, ildcp, incoming, outgoing }: PluginHttpOpts) {
+  constructor ({ multi, multiDelimiter, ildcp, incoming, outgoing }: PluginHttpOpts) {
     super()
 
     // TODO: validate args
     this._connected = false
     this._multi = !!multi
+    this._multiDelimiter = multiDelimiter || '%' 
     this._ildcp = ildcp
 
     // incoming
@@ -190,7 +193,7 @@ class PluginHttp extends EventEmitter {
     }
 
     // splice the address segment into the URL
-    return this._url.replace('%', segment)
+    return this._url.replace(this._multiDelimiter, segment)
   }
 
   _getHttp2ClientForOrigin (origin: string): Http2Client {
