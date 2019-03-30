@@ -18,6 +18,7 @@ For an example of usage, see the test script in `test/test.js`.
 ```js
 new PluginHttp({
   multi: true, // whether to behave as a multilateral plugin
+  multiDelimiter: '^', // to specifiy a delimiter other than default `%`
   ildcp: { // ildcp details. fetched if multilateral and unspecified.
     clientAddress: 'test.example',
     assetCode: 'XRP',
