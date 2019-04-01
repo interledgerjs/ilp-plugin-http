@@ -72,7 +72,7 @@ class PluginHttp extends EventEmitter {
     // TODO: validate args
     this._connected = false
     this._multi = !!multi
-    this._multiDelimiter = multiDelimiter || '%' 
+    this._multiDelimiter = multiDelimiter || '%'
     this._ildcp = ildcp
 
     // incoming
