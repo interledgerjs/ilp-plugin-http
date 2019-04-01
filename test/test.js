@@ -61,13 +61,14 @@ async function run () {
         },
         options: {
           multi: true,
+          multiDelimiter: '^',
           incoming: {
             secret: 'secret_number_three',
             port: port3
           },
           outgoing: {
             secretToken: 'secret_number_four',
-            url: 'http://localhost:%'
+            url: 'http://localhost:^'
           }
         }
       }
