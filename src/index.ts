@@ -107,7 +107,7 @@ class PluginHttp extends EventEmitter {
         return
       }
 
-      const verified = await this._verifyToken(ctx.get('authorization'))
+      const verified = await this._verifyAuth(ctx.get('authorization'))
       if (!verified) {
         ctx.throw(401, 'invalid authorization')
         return
@@ -161,12 +161,13 @@ class PluginHttp extends EventEmitter {
     this.emit('disconnect')
   }
 
-  _verifyToken (token: string): Promise<boolean> {
+  _verifyAuth (authHeader: string): Promise<boolean> {
+    const token = authHeader.replace('Bearer ', '')
     return this._incomingAuth.verifyToken(token)
   }
 
-  _getToken (): Promise<string> {
-    return this._outgoingAuth.getToken()
+  async _getAuthHeader (): Promise<string> {
+    return 'Bearer ' + await this._outgoingAuth.getToken()
   }
 
   async _fetchIldcp (): Promise<ILDCP.IldcpResponse> {
@@ -224,7 +225,7 @@ class PluginHttp extends EventEmitter {
     }
 
     const headers = {
-      Authorization: await this._getToken(),
+      Authorization: await this._getAuthHeader(),
       'Content-Type': 'application/ilp+octet-stream',
       'ILP-Peer-Name': this._name
     }
