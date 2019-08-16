@@ -26,7 +26,8 @@ new PluginHttp({
   },
   incoming: { // (required) describes the http server
     port: 4000, // (required) port to listen on
-    secret: 'shhh' // (required) secret for auth (see Protocol section)
+    // secret: 'shhh', // secret for JWT auth (see Protocol section)
+    secretToken: 'shhh' // (required) secret for auth (see Protocol section)
   },
   outgoing: { // (required) describes outgoing http calls
     url: 'https://example.com/ilp/%', // (required) endpoint to POST packets to
@@ -34,7 +35,8 @@ new PluginHttp({
     // segment after this plugin's own address will be filled where the `%` is
     // when routing packets.
 
-    secret: 'othersecret', // (required) secret for auth (see Protocol section)
+    // secret: 'othersecret', // secret for JWT auth (see Protocol section)
+    secretToken: 'othersecret', // (required) secret for auth (see Protocol section)
     http2: false, // whether `url` uses http2
     tokenExpiry: 10 * 1000, // how often to sign a new token for auth
     name: 'alice' // name to send in `ILP-Peer-Name` header, for ilp addr.
