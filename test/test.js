@@ -10,9 +10,17 @@ async function run () {
   const port3 = await getPort()
   const port4 = await getPort()
 
+  /**
+   * Test each auth configuration:
+   * - serverPlugin -> server (JWT, non-bearer config)
+   * - server -> serverPlugin (JWT, bearer tokens)
+   * - clientPlugin -> client (simple, non-bearer config)
+   * - client -> clientPlugin (simple, bearer tokens)
+   */
+
   const serverPlugin = new PluginHttp({
     incoming: {
-      secret: 'secret_number_one',
+      jwtSecret: 'secret_number_one',
       port: port1
     },
     outgoing: {
@@ -44,7 +52,7 @@ async function run () {
             port: port2
           },
           outgoing: {
-            secret: 'secret_number_one',
+            jwtSecret: 'secret_number_one',
             url: 'http://localhost:' + port1
           }
         }
@@ -63,11 +71,11 @@ async function run () {
           multi: true,
           multiDelimiter: '^',
           incoming: {
-            secret: 'secret_number_three',
+            secretToken: 'secret_number_three',
             port: port3
           },
           outgoing: {
-            secretToken: 'secret_number_four',
+            staticToken: 'secret_number_four',
             url: 'http://localhost:^'
           }
         }
@@ -77,11 +85,11 @@ async function run () {
 
   const clientPlugin = new PluginHttp({
     incoming: {
-      secretToken: 'secret_number_four',
+      staticToken: 'secret_number_four',
       port: port4
     },
     outgoing: {
-      secret: 'secret_number_three',
+      secretToken: 'secret_number_three',
       url: 'http://localhost:' + port3
     }
   })
@@ -94,8 +102,10 @@ async function run () {
     serverSecret: crypto.randomBytes(32)
   })
 
+  let serverStream
   server.on('connection', conn => {
     conn.on('stream', stream => {
+      serverStream = stream
       stream.setReceiveMax('100000000')
     })
   })
@@ -104,15 +114,19 @@ async function run () {
   await server.listen()
 
   console.log('opening stream connection')
-  const connection = await createConnection({
+  const clientConnection = await createConnection({
     ...server.generateAddressAndSecret(),
     plugin: clientPlugin,
     slippage: 0.05
   })
 
-  console.log('sending money on stream')
-  const stream = connection.createStream()
+  console.log('sending money from client to server on stream')
+  const stream = clientConnection.createStream()
   await stream.sendTotal('6000000', { timeout: 999999999 })
+
+  console.log('sending money from server to client on stream')
+  stream.setReceiveMax('100000000')
+  await serverStream.sendTotal('6000000', { timeout: 999999999 })
 
   console.log('sent')
   process.exit(0)

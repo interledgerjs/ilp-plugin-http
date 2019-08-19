@@ -1,4 +1,5 @@
 # ILP Plugin HTTP
+
 > ILP Plugin that uses HTTP requests
 
 - [Overview](#overview)
@@ -19,14 +20,20 @@ For an example of usage, see the test script in `test/test.js`.
 new PluginHttp({
   multi: true, // whether to behave as a multilateral plugin
   multiDelimiter: '%', // to specifiy a delimiter other than default `%`
-  ildcp: { // ildcp details. fetched if multilateral and unspecified.
+  ildcp: {
+    // ildcp details. fetched if multilateral and unspecified.
     clientAddress: 'test.example',
     assetCode: 'XRP',
     assetScale: 9
   },
   incoming: { // (required) describes the http server
     port: 4000, // (required) port to listen on
-    secret: 'shhh' // (required) secret for auth (see Protocol section)
+
+    // Simple bearer authentication
+    staticToken: 'shhh', // (required if using simple)
+
+    // JWT authentication
+    jwtSecret: 'shhh' // (required if using JWTs)
   },
   outgoing: { // (required) describes outgoing http calls
     url: 'https://example.com/ilp/%', // (required) endpoint to POST packets to
@@ -34,9 +41,14 @@ new PluginHttp({
     // segment after this plugin's own address will be filled where the `%` is
     // when routing packets.
 
-    secret: 'othersecret', // (required) secret for auth (see Protocol section)
+    // Simple bearer authentication
+    staticToken: 'othersecret', // (required if using simple)
+
+    // JWT authentication
+    jwtSecret: 'othersecret', // (required if using JWTs)
+    jwtExpiry: 10 * 1000, // how often to sign a new token for auth
+
     http2: false, // whether `url` uses http2
-    tokenExpiry: 10 * 1000, // how often to sign a new token for auth
     name: 'alice' // name to send in `ILP-Peer-Name` header, for ilp addr.
   }
 })
@@ -44,6 +56,12 @@ new PluginHttp({
 
 ## Protocol
 
-```
-TODO
-```
+### Authentication
+
+Two token formats are supported:
+- **Simple auth**, using simple, static bearer tokens
+- **JWT auth**, using JSON web tokens
+
+Both peer plugins must be configured with the same authentication method.
+
+Note: v1.5.0 and greater use bearer tokens by default. However, to peer with a plugin using v1.4.0 or lower, the `secret` (for JWT auth) or `secretToken` (for simple auth) configuration options must be provided instead.

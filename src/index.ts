@@ -3,7 +3,6 @@ import * as IlpPacket from 'ilp-packet'
 import * as ILDCP from 'ilp-protocol-ildcp'
 import * as EventEmitter from 'events'
 import * as raw from 'raw-body'
-import * as jwt from 'jsonwebtoken'
 import * as http from 'http'
 import fetch, { Response } from 'node-fetch'
 import { URL } from 'url'
@@ -25,19 +24,33 @@ export interface PluginHttpOpts {
 
   incoming: {
     port: number,
-    secret?: string, // JWT
-    secretToken?: string
+
+    // Bearer token config (renamed to align with updated outgoing config)
+    jwtSecret?: string
+    staticToken?: string
+
+    // Old configuration
+    secret?: string, // Alias of jwtSecret
+    secretToken?: string // Alias of staticToken
   },
 
   outgoing: {
     url: string,
+
+    // Bearer token configuration
+    jwtSecret?: string
+    jwtExpiry?: number
+    staticToken?: string
+
+    // Old configuration (maintained for backwards compatibility)
     secret?: string, // JWT
-    secretToken?: string,
-    http2?: boolean,
-    http2MaxRequestsPerSession?: number,
-    name?: string,
-    sendIlpDestination?: boolean
+    secretToken?: string
     tokenExpiry?: number
+
+    http2?: boolean
+    http2MaxRequestsPerSession?: number
+    name?: string
+    sendIlpDestination?: boolean
   }
 }
 
@@ -59,6 +72,7 @@ class PluginHttp extends EventEmitter {
   private _http2MaxRequestsPerSession?: number
   private _name: string
   private _sendIlpDestination: boolean
+  private _useBearerToken: boolean
   private _incomingAuth: Auth
   private _outgoingAuth: Auth
   private _dataHandler?: PacketHandler
@@ -87,13 +101,15 @@ class PluginHttp extends EventEmitter {
     this._sendIlpDestination = !!outgoing.sendIlpDestination
 
     this._incomingAuth = new Auth({
-      jwtSecret: incoming.secret,
-      staticToken: incoming.secretToken
+      jwtSecret: incoming.secret || incoming.jwtSecret,
+      staticToken: incoming.secretToken || incoming.staticToken
     })
+
+    this._useBearerToken = !outgoing.secret || !outgoing.secretToken
     this._outgoingAuth = new Auth({
-      jwtSecret: outgoing.secret,
-      jwtExpiry: outgoing.tokenExpiry,
-      staticToken: outgoing.secretToken
+      jwtSecret: outgoing.secret || outgoing.jwtSecret,
+      jwtExpiry: outgoing.tokenExpiry || outgoing.jwtExpiry,
+      staticToken: outgoing.secretToken || outgoing.staticToken
     })
   }
 
@@ -162,12 +178,17 @@ class PluginHttp extends EventEmitter {
   }
 
   _verifyAuth (authHeader: string): Promise<boolean> {
-    const token = authHeader.replace('Bearer ', '')
+    const token = authHeader.startsWith('Bearer ')
+      ? authHeader.replace('Bearer ', '')
+      : authHeader
     return this._incomingAuth.verifyToken(token)
   }
 
   async _getAuthHeader (): Promise<string> {
-    return 'Bearer ' + await this._outgoingAuth.getToken()
+    const token = await this._outgoingAuth.getToken()
+    return this._useBearerToken
+      ? 'Bearer ' + token
+      : token
   }
 
   async _fetchIldcp (): Promise<ILDCP.IldcpResponse> {
