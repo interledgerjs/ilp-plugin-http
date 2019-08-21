@@ -105,7 +105,7 @@ class PluginHttp extends EventEmitter {
       staticToken: incoming.secretToken || incoming.staticToken
     })
 
-    this._useBearerToken = !outgoing.secret || !outgoing.secretToken
+    this._useBearerToken = !outgoing.secret && !outgoing.secretToken
     this._outgoingAuth = new Auth({
       jwtSecret: outgoing.secret || outgoing.jwtSecret,
       jwtExpiry: outgoing.tokenExpiry || outgoing.jwtExpiry,
