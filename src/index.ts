@@ -14,6 +14,8 @@ import Auth from './lib/auth'
 
 type FetchResponse = Http2FetchResponse | Response
 
+const BEARER_PREFIX = 'Bearer '
+
 const MAX_ILP_PACKET_LENGTH = 32767
 const INVALID_SEGMENT = new RegExp('[^A-Za-z0-9_\\-]')
 
@@ -178,8 +180,8 @@ class PluginHttp extends EventEmitter {
   }
 
   _verifyAuth (authHeader: string): Promise<boolean> {
-    const token = authHeader.startsWith('Bearer ')
-      ? authHeader.replace('Bearer ', '')
+    const token = authHeader.startsWith(BEARER_PREFIX)
+      ? authHeader.substring(BEARER_PREFIX.length)
       : authHeader
     return this._incomingAuth.verifyToken(token)
   }
@@ -187,7 +189,7 @@ class PluginHttp extends EventEmitter {
   async _getAuthHeader (): Promise<string> {
     const token = await this._outgoingAuth.getToken()
     return this._useBearerToken
-      ? 'Bearer ' + token
+      ? BEARER_PREFIX + token
       : token
   }
 
