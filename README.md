@@ -64,4 +64,4 @@ Two token formats are supported:
 
 Both peer plugins must be configured with the same authentication method.
 
-Note: v1.5.0 and greater use bearer tokens by default. However, to peer with a plugin using v1.4.0 or lower, the `secret` (for JWT auth) or `secretToken` (for simple auth) configuration options must be provided instead.
+Note: v1.6.0 and greater use bearer tokens by default. However, to peer with a plugin using v1.5.0 or lower, the `secret` (for JWT auth) or `secretToken` (for simple auth) configuration options must be provided instead.
