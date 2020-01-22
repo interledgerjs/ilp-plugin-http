@@ -249,7 +249,7 @@ class PluginHttp extends EventEmitter {
 
     const headers = {
       Authorization: await this._getAuthHeader(),
-      'Content-Type': 'application/ilp+octet-stream',
+      'Content-Type': 'application/octet-stream',
       'ILP-Peer-Name': this._name
     }
 
