@@ -1,7 +1,7 @@
 import * as Koa from 'koa'
 import * as IlpPacket from 'ilp-packet'
 import * as ILDCP from 'ilp-protocol-ildcp'
-import * as EventEmitter from 'events'
+import { EventEmitter } from 'events'
 import * as raw from 'raw-body'
 import * as http from 'http'
 import fetch, { Response } from 'node-fetch'
@@ -179,21 +179,21 @@ class PluginHttp extends EventEmitter {
     this.emit('disconnect')
   }
 
-  _verifyAuth (authHeader: string): Promise<boolean> {
+  private _verifyAuth (authHeader: string): Promise<boolean> {
     const token = authHeader.startsWith(BEARER_PREFIX)
       ? authHeader.substring(BEARER_PREFIX.length)
       : authHeader
     return this._incomingAuth.verifyToken(token)
   }
 
-  async _getAuthHeader (): Promise<string> {
+  private async _getAuthHeader (): Promise<string> {
     const token = await this._outgoingAuth.getToken()
     return this._useBearerToken
       ? BEARER_PREFIX + token
       : token
   }
 
-  async _fetchIldcp (): Promise<ILDCP.IldcpResponse> {
+  private async _fetchIldcp (): Promise<ILDCP.IldcpResponse> {
     if (!this._ildcp) {
       if (this._dataHandler) {
         return (this._ildcp = await ILDCP.fetch(this._dataHandler))
@@ -206,7 +206,7 @@ class PluginHttp extends EventEmitter {
   }
 
   // Only used in multilateral situation
-  async _generateUrl (destination: string): Promise<string> {
+  private async _generateUrl (destination: string): Promise<string> {
     const ildcp = await this._fetchIldcp()
     const segment = destination
       .substring(ildcp.clientAddress.length + 1)
@@ -220,7 +220,7 @@ class PluginHttp extends EventEmitter {
     return this._url.replace(this._multiDelimiter, segment)
   }
 
-  _getHttp2ClientForOrigin (origin: string): Http2Client {
+  private _getHttp2ClientForOrigin (origin: string): Http2Client {
     if (!this._http2Clients[origin]) {
       this._http2Clients[origin] = new Http2Client(origin, {
         maxRequestsPerSession: this._http2MaxRequestsPerSession
@@ -231,7 +231,7 @@ class PluginHttp extends EventEmitter {
   }
 
   // TODO: type/interface for the fetch response?
-  _fetch (url: string, opts: Http2FetchParams): Promise<FetchResponse> {
+  private _fetch (url: string, opts: Http2FetchParams): Promise<FetchResponse> {
     if (this._http2) {
       const { origin, pathname } = new URL(url)
 
