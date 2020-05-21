@@ -20,8 +20,9 @@
   "author": "",
   "license": "Apache-2.0",
   "dependencies": {
-    "ilp-packet": "^3.0.8",
-    "ilp-protocol-ildcp": "^2.0.1",
+    "@types/node": "^10.17.24",
+    "ilp-packet": "^3.0.9",
+    "ilp-protocol-ildcp": "^2.1.4",
     "jsonwebtoken": "^8.4.0",
     "koa": "^2.6.2",
     "node-fetch": "^2.3.0",
@@ -30,15 +31,13 @@
   "devDependencies": {
     "@types/jsonwebtoken": "^8.3.0",
     "@types/koa": "^2.0.48",
-    "@types/node": "^10.12.18",
     "@types/node-fetch": "^2.1.4",
     "get-port": "^4.1.0",
-    "ilp-connector": "^22.2.0",
+    "ilp-connector": "^23.0.1",
     "ilp-protocol-stream": "^1.8.9",
-    "ilp-store-memory": "^1.0.0",
     "ts-node": "^8.0.1",
     "tslint": "^5.12.1",
     "tslint-config-standard": "^8.0.1",
-    "typescript": "^3.2.4"
+    "typescript": "^3.9.3"
   }
 }

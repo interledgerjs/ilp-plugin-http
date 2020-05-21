@@ -32,7 +32,6 @@ async function run () {
   await IlpConnector.createApp({
     spread: 0,
     backend: 'one-to-one',
-    store: 'ilp-store-memory',
     initialConnectTimeout: 60000,
     ilpAddress: 'private.moneyd',
     accounts: {
