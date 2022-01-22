@@ -25,7 +25,7 @@
     "ilp-protocol-ildcp": "^2.1.4",
     "jsonwebtoken": "^8.4.0",
     "koa": "^2.6.2",
-    "node-fetch": "^2.3.0",
+    "node-fetch": "^3.1.1",
     "raw-body": "^2.3.3"
   },
   "devDependencies": {
